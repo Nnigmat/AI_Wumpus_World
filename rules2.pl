@@ -27,9 +27,17 @@ start :-
             edge(Edge), retract(edge(Edge)), assert(edge([[X, Y]|Edge]))
         )
     ;
-        try_luck
+        (
+            edge(Edge), Edge \== [] -> try_luck
+            ; wumpus(Wumpus),
+            ( Wumpus == unknown -> write('The map is impossible to solve'), break
+                ; wumpus([X|Y]), retract(pos(X, Y, Some)), delete(Some, wumpus, Res), assert(pos(X, Y, Res)),
+                retract(edge(_)), assert(edge([[X, Y]]))
+            )
+        )
     ),
     start. 
+
 
 gold_found :-
     1 = 1.
@@ -39,22 +47,22 @@ add_ok_cells(X, Y) :-
     max_y(Max_y),
     visited(Vis), 
     (
-        Temp1 is X - 1, Temp1 \== 0 -> \+ member([Temp1, Y], Vis), 
+        Temp1 is X - 1, Temp1 \== 0, \+ member([Temp1, Y], Vis) -> 
         queue(Arr1), retract(queue(Arr1)), assert(queue([[Temp1, Y]|Arr1]));
         1 = 1
     ),
     (
-        Temp2 is X + 1, Temp2 \== Max_x -> \+ member([Temp2, Y], Vis),
+        Temp2 is X + 1, Temp2 \== Max_x, \+ member([Temp2, Y], Vis) ->
         queue(Arr2), retract(queue(Arr2)), assert(queue([[Temp2, Y]|Arr2]));
         1 = 1
     ),
     (
-        Temp3 is Y - 1, Temp3 \== 0 -> \+ member([X, Temp3], Vis),
+        Temp3 is Y - 1, Temp3 \== 0, \+ member([X, Temp3], Vis) ->
         queue(Arr3), retract(queue(Arr3)), assert(queue([[X, Temp3]|Arr3])); 
         1 = 1
     ),
     (
-        Temp4 is Y + 1, Temp4 \== Max_y -> \+ member([X, Temp4], Vis),
+        Temp4 is Y + 1, Temp4 \== Max_y, \+ member([X, Temp4], Vis) ->
         queue(Arr4), retract(queue(Arr4)), assert(queue([[X, Temp4]|Arr4]));
         1 = 1
     ).
@@ -71,7 +79,7 @@ try_luck :-
         \+ member([Temp1, Y], Vis) ->
             (pos(Temp1, Y, Props), 
                 (member(free, Props) ->
-                    add_ok_cells(X+1, Y)
+                    add_ok_cells(Temp1, Y)
                 ; member(pit, Props) ->
                     pits(Pits), retract(pits(Pits)), assert(pits([Temp1, Y|Pits]))
                 ; member(wumpus, Props) ->
@@ -81,10 +89,13 @@ try_luck :-
                 ;
                     1 = 1
                 )),
-            (N == 2 ->
+            (N == 2, \+ member(pit, Props), \+ member(wumpus, Props) ->
                 edge(Edge), retract(edge(Edge)), assert(edge([[Temp1, Y]|Edge]))
-            ; N == 3 ->
+            ; N == 3, \+ member(pit, Props), \+ member(wumpus, Props) ->
                 append(Res, [[Temp1, Y]], Temp), retract(edge(_)), assert(edge(Temp))
+            ;
+                append(Res, [[X, Y]], Temp),
+                retract(edge(_)), assert(edge(Temp))
             )
         ;\+ member([X, Temp2], Vis) ->
             (pos(X, Temp2, Props), 
@@ -97,17 +108,20 @@ try_luck :-
             ; member(gold, Props) ->
                 gold_found
             ;
-                1 = 1
+                retract(edge(_)), assert(edge(Res))
             )),
-            (N == 2 ->
+            (N == 2, \+ member(pit, Props), \+ member(wumpus, Props) ->
                 edge(Edge), retract(edge(Edge)), assert(edge([[X, Temp2]|Edge]))
-            ; N == 3 ->
+            ; N == 3, \+ member(pit, Props), \+ member(wumpus, Props) ->
                 append(Res, [[X, Temp2]], Temp), retract(edge(_)), assert(edge(Temp))
+            ;
+                % retract(edge(_)), assert(edge(Res))
+                1 = 1
             )
         ;\+ member([Temp3, Y], Vis) ->
             (pos(Temp3, Y, Props), 
             (member(free, Props) ->
-            add_ok_cells(Temp3, Y)
+                add_ok_cells(Temp3, Y)
             ; member(pit, Props) ->
                 pits(Pits), retract(pits(Pits)), assert(pits([Temp3, Y|Pits]))
             ; member(wumpus, Props) ->
@@ -117,15 +131,18 @@ try_luck :-
             ;
                 1 = 1
             )),
-            (N == 2 ->
+            (N == 2, \+ member(pit, Props), \+ member(wumpus, Props) ->
                 edge(Edge), retract(edge(Edge)), assert(edge([[Temp3, Y]|Edge]))
-            ; N == 3 ->
+            ; N == 3, \+ member(pit, Props), \+ member(wumpus, Props) ->
                 append(Res, [[Temp3, Y]], Temp), retract(edge(_)), assert(edge(Temp))
+            ;
+                %  retract(edge(_)), assert(edge(Res))
+                1 = 1
             )
         ;\+ member([X, Temp4], Vis) ->
             (pos(X, Temp4, Props), 
             (member(free, Props) ->
-            add_ok_cells(X, Temp4)
+                add_ok_cells(X, Temp4)
             ; member(pit, Props) ->
                 pits(Pits), retract(pits(Pits)), assert(pits([X, Temp4|Pits]))
             ; member(wumpus, Props) ->
@@ -135,10 +152,13 @@ try_luck :-
             ;
                 1 = 1
             )),
-            (N == 2 ->
+            (N == 2, \+ member(pit, Props), \+ member(wumpus, Props) ->
                 edge(Edge), retract(edge(Edge)), assert(edge([[X, Temp4]|Edge]))
-            ; N == 3 ->
+            ; N == 3, \+ member(pit, Props), \+ member(wumpus, Props) ->
                 append(Res, [[X, Temp4]], Temp), retract(edge(_)), assert(edge(Temp))
+            ; 
+                % retract(edge(_)), assert(edge(Res))
+                1 = 1
             )
     ).
 

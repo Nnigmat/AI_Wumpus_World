@@ -1,3 +1,4 @@
+:- dynamic pos/3.
 max_x(4).
 max_y(4).
 pos(1, 1, [free]).
