@@ -5,30 +5,37 @@
 :- dynamic pits/1.
 :- dynamic wumpus/1.
 :- dynamic good/1.
+:- dynamic gold/1.
 
 queue([[1, 1]]).
 visited([]).
 edge([]).
 pits([]).
 wumpus(unknown).
+gold(unknown).
 
 start :-
     queue(Arr),
     (Arr \== [] ->
         queue([[X, Y]|Rest]),
+        format('Came to cell (~w, ~w).\n', [X, Y]),
         retract(queue([[X, Y]|Rest])), assert(queue(Rest)),
         retract(visited(Vis)), assert(visited([[X, Y]|Vis])),
         pos(X, Y, Props),
         (member(free, Props) -> 
+            write("Oh, it's safe, no breeze or stench here.\n"),
             add_ok_cells(X, Y)
         ;member(gold, Props) ->
+            write("Oh, there's gold. Hurray!!!\n"),
+            retract(gold(_)), assert(gold([X, Y])),
             gold_found
         ;
+            write("Oh, it has breeze or stench.\n"),
             edge(Edge), retract(edge(Edge)), assert(edge([[X, Y]|Edge]))
         )
     ;
         (
-            edge(Edge), Edge \== [] -> try_luck
+            edge(Edge), Edge \== [] -> write("No safe cells, let's try luck.\n"), try_luck
             ; wumpus(Wumpus),
             ( Wumpus == unknown -> write('The map is impossible to solve'), break
                 ; wumpus([X|Y]), retract(pos(X, Y, Some)), delete(Some, wumpus, Res), assert(pos(X, Y, Res)),
@@ -40,7 +47,12 @@ start :-
 
 
 gold_found :-
-    1 = 1.
+    visited(Vis),
+    wumpus(Wumpus),
+    gold(Gold),
+    pits(Pits),
+    format("\n\nResults\nSafe cells: ~w\nGold position: ~w\nWumpus position: ~w\nPits: ~w\n ", [Vis, Gold, Wumpus, Pits]),
+    halt.
 
 add_ok_cells(X, Y) :-
     max_x(Max_x), 
@@ -48,22 +60,26 @@ add_ok_cells(X, Y) :-
     visited(Vis), 
     (
         Temp1 is X - 1, Temp1 \== 0, \+ member([Temp1, Y], Vis) -> 
-        queue(Arr1), retract(queue(Arr1)), assert(queue([[Temp1, Y]|Arr1]));
+        queue(Arr1), retract(queue(Arr1)), assert(queue([[Temp1, Y]|Arr1])),
+        format("New safe cell (~w, ~w).\n", [Temp1, Y]);
         1 = 1
     ),
     (
         Temp2 is X + 1, Temp2 \== Max_x, \+ member([Temp2, Y], Vis) ->
-        queue(Arr2), retract(queue(Arr2)), assert(queue([[Temp2, Y]|Arr2]));
+        queue(Arr2), retract(queue(Arr2)), assert(queue([[Temp2, Y]|Arr2])),
+        format("New safe cell (~w, ~w).\n", [Temp2, Y]);
         1 = 1
     ),
     (
         Temp3 is Y - 1, Temp3 \== 0, \+ member([X, Temp3], Vis) ->
-        queue(Arr3), retract(queue(Arr3)), assert(queue([[X, Temp3]|Arr3])); 
+        queue(Arr3), retract(queue(Arr3)), assert(queue([[X, Temp3]|Arr3])), 
+        format("New safe cell (~w, ~w).\n", [X, Temp3]);
         1 = 1
     ),
     (
         Temp4 is Y + 1, Temp4 \== Max_y, \+ member([X, Temp4], Vis) ->
-        queue(Arr4), retract(queue(Arr4)), assert(queue([[X, Temp4]|Arr4]));
+        queue(Arr4), retract(queue(Arr4)), assert(queue([[X, Temp4]|Arr4])),
+        format("New safe cell (~w, ~w).\n", [X, Temp4]);
         1 = 1
     ).
    
@@ -79,12 +95,19 @@ try_luck :-
         \+ member([Temp1, Y], Vis) ->
             (pos(Temp1, Y, Props), 
                 (member(free, Props) ->
+                    format("I'm so lucky! Cell (~w, ~w) is safe, no breeze or stench in !\n", [Temp1, Y]),
                     add_ok_cells(Temp1, Y)
                 ; member(pit, Props) ->
+                    format("Oh, i'm unlucky! Cell (~w, ~w) is pit!\n", [Temp1, Y]),
+                    format("Memorized pit's location\n"),
                     pits(Pits), retract(pits(Pits)), assert(pits([Temp1, Y|Pits]))
                 ; member(wumpus, Props) ->
+                    format("Oh, i'm unlucky! Wumpus is sitting in cell (~w, ~w)!\n", [Temp1, Y]),
+                    format("Memorized wumpus's location\n"),
                     retract(wumpus(unknown)), assert(wumpus([Temp1, Y]))
                 ; member(gold, Props) ->
+                    format("Oh, i'm so lucky! Gold is in (~w, ~w) cell!\n", [Temp1, Y]),
+                    retract(gold(_)), assert(gold([X, Y])),
                     gold_found
                 ;
                     1 = 1
@@ -100,12 +123,19 @@ try_luck :-
         ;\+ member([X, Temp2], Vis) ->
             (pos(X, Temp2, Props), 
             (member(free, Props) ->
+                format("I'm so lucky! Cell (~w, ~w) is safe, no breeze or stench in!\n", [X, Temp2]),
                 add_ok_cells(X, Temp2)
             ; member(pit, Props) ->
+                format("Oh, i'm unlucky! Cell (~w, ~w) is pit!\n", [X, Temp2]),
+                format("Memorized pit's location\n"),
                 pits(Pits), retract(pits(Pits)), assert(pits([X, Temp2|Pits]))
             ; member(wumpus, Props) ->
+                format("Oh, i'm unlucky! Wumpus is sitting in cell (~w, ~w)!\n", [X, Temp2]),
+                format("Memorized wumpus's location\n"),
                 retract(wumpus(unknown)), assert(wumpus([X, Temp2]))
             ; member(gold, Props) ->
+                format("Oh, i'm so lucky! Gold is in (~w, ~w) cell!\n", [X, Temp2]),
+                retract(gold(_)), assert(gold([X, Y])),
                 gold_found
             ;
                 retract(edge(_)), assert(edge(Res))
@@ -121,12 +151,19 @@ try_luck :-
         ;\+ member([Temp3, Y], Vis) ->
             (pos(Temp3, Y, Props), 
             (member(free, Props) ->
+                format("I'm so lucky! Cell (~w, ~w) is safe, no breeze or stench in!\n", [Temp3, Y]),
                 add_ok_cells(Temp3, Y)
             ; member(pit, Props) ->
+                format("Oh, i'm unlucky! Cell (~w, ~w) is pit!\n", [Temp3, Y]),
+                format("Memorized pit's location\n"),
                 pits(Pits), retract(pits(Pits)), assert(pits([Temp3, Y|Pits]))
             ; member(wumpus, Props) ->
+                format("Oh, i'm unlucky! Wumpus is sitting in cell (~w, ~w)!\n", [Temp3, Y]),
+                format("Memorized wumpus's location\n"),
                 retract(wumpus(unknown)), assert(wumpus([Temp3, Y]))
             ; member(gold, Props) ->
+                format("Oh, i'm so lucky! Gold is in (~w, ~w) cell!\n", [Temp3, Y]),
+                retract(gold(_)), assert(gold([X, Y])),
                 gold_found
             ;
                 1 = 1
@@ -142,12 +179,19 @@ try_luck :-
         ;\+ member([X, Temp4], Vis) ->
             (pos(X, Temp4, Props), 
             (member(free, Props) ->
+                format("I'm so lucky! Cell (~w, ~w) is safe, no breeze or stench in!\n", [X, Temp4]),
                 add_ok_cells(X, Temp4)
             ; member(pit, Props) ->
+                format("Oh, i'm unlucky! Cell (~w, ~w) is pit!\n", [X, Temp4]),
+                format("Memorized pit's location\n"),
                 pits(Pits), retract(pits(Pits)), assert(pits([X, Temp4|Pits]))
             ; member(wumpus, Props) ->
+                format("Oh, i'm unlucky! Wumpus is sitting in cell (~w, ~w)!\n", [X, Temp4]),
+                format("Memorized wumpus's location\n"),
                 retract(wumpus(unknown)), assert(wumpus(X, Temp4))
             ; member(gold, Props) ->
+                format("Oh, i'm so lucky! Gold is in (~w, ~w) cell!\n", [X, Temp4]),
+                retract(gold(_)), assert(gold([X, Y])),
                 gold_found
             ;
                 1 = 1
@@ -193,55 +237,3 @@ adj(X, Y, N) :-
         1 = 1
     ),
     good(Res), N = Res, retract(good(Res)).
-
-
-% search :-
-%     check_edge,
-%     check_outer_edge,
-%     break. 
-
-% check_edge :-
-%     edge(Edge),
-%     assert(new_cell_opened(false)),
-%     forall(member([X, Y], Edge), check(X, Y)),
-
-% check(X, Y) :-
-%     pos(X, Y, Props),
-%     max_x(Max_x), 
-%     max_y(Max_y),
-%     visited(Vis), 
-%     (member(breeze, Props) ->
-%         assert(good(0)),
-%         Temp1 is X - 1,
-%         Temp2 is X + 1,
-%         Temp3 is Y - 1,
-%         Temp4 is Y + 1,
-%         (
-%             Temp1 == 0 -> good(Z1), retract(good(Z1)), assert(good(Z1+1));
-%             member([Temp1, Y], Vis) -> good(Z1), retract(good(Z1)), assert(good(Z1+1)); 
-%             assert(unvisited([Temp1, Y]))
-%         ),
-%         (
-%             Temp2 == 0 -> good(Z2), retract(good(Z2)), assert(good(Z2+1));
-%             member([Temp2, Y], Vis) -> good(Z2), retract(good(Z2)), assert(good(Z2+1));
-%             assert(unvisited([Temp1, Y]))
-%         ),
-%         (
-%             Temp3 == 0 -> good(Z3), retract(good(Z3)), assert(good(Z3+1));
-%             member([X, Temp3], Vis) -> good(Z3), retract(good(Z3)), assert(good(Z3+1));
-%             assert(unvisited([Temp1, Y]))
-%         ),
-%         (
-%             Temp4 == 0 -> good(Z4), retract(good(Z4)), assert(good(Z4+1));
-%             member([X, Temp4], Vis) -> good(Z4), retract(good(Z4)), assert(good(Z4+1));
-%             assert(unvisited([Temp1, Y]))
-%         ),
-%         good(Res), retract(good(Res)),
-%         (
-%             Res == 3 -> 
-%         )
-%     )
-%     ; member(stench, Props) ->
-%     ; member(pit, Props) ->
-%     ; member(wumpus, Props) ->
-%     ).
