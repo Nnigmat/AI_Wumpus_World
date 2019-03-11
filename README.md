@@ -13,3 +13,8 @@ You can choose different maps by changing first row in rules.pl file
 :- dynamic edge/1.
 :- dynamic pits/1.
 ```
+## Available Maps
+* map.pl
+* map2.pl
+* impossible_map.pl
+* kill_wumpus_map.pl
