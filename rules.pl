@@ -1,4 +1,4 @@
-:- ensure_loaded('kill_wumpus_map.pl').
+:- ensure_loaded('map.pl').
 :- dynamic queue/1.
 :- dynamic visited/1.
 :- dynamic edge/1.
