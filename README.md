@@ -6,7 +6,7 @@ Run the program:
 You can choose different maps by changing first row in rules.pl file
 
 ``` 
-        rules.pl
+%  file rules.pl
 :- ensure_loaded('kill_wumpus_map.pl'). <------
 :- dynamic queue/1.
 :- dynamic visited/1.
